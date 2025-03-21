@@ -20,7 +20,7 @@ android {
   defaultConfig {
     applicationId = "dev.shadoe.delta"
     minSdk = 30
-    targetSdk = 35
+    targetSdk = 36
     versionCode = versionConfig.versionCode
     versionName = versionConfig.versionName
 
@@ -85,7 +85,6 @@ dependencies {
 
   implementation(libs.androidx.annotation)
   implementation(libs.androidx.ktx.core)
-  implementation(libs.androidx.core.splashscreen)
   implementation(libs.androidx.graphics.shapes)
 
   platform(libs.compose.bom).let {

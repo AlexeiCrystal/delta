@@ -1,6 +1,5 @@
 package dev.shadoe.delta.data.softap
 
-import android.content.Context
 import android.net.IIntResultListener
 import android.net.ITetheringConnector
 import android.net.MacAddress
@@ -16,11 +15,11 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.rikka.tools.refine.Refine
 import dev.shadoe.delta.api.SoftApCapabilities
 import dev.shadoe.delta.api.SoftApConfiguration
 import dev.shadoe.delta.api.SoftApEnabledState
+import dev.shadoe.delta.api.SoftApEnabledState.EnabledStateType
 import dev.shadoe.delta.api.SoftApStatus
 import dev.shadoe.delta.api.TetheredClient
 import dev.shadoe.delta.data.services.TetheringSystemService
@@ -56,7 +55,6 @@ private typealias PrefMapT = Map.Entry<Preferences.Key<String>, String>
 class SoftApRepository
 @Inject
 constructor(
-  @ApplicationContext private val applicationContext: Context,
   @TetheringSystemService private val tetheringConnector: ITetheringConnector,
   @WifiSystemService private val wifiManager: IWifiManager,
   @MacAddressCache private val persistedMacAddressCache: DataStore<Preferences>,
@@ -99,10 +97,8 @@ constructor(
 
   private val tetheringEventListener =
     object : TetheringEventListener {
-      override fun onEnabledStateChanged() {
-        _status.update {
-          it.copy(enabledState = wifiManager.wifiApEnabledState)
-        }
+      override fun onEnabledStateChanged(@EnabledStateType state: Int) {
+        _status.update { it.copy(enabledState = state) }
       }
 
       override fun onTetheredClientsChanged(clients: List<TetheredClient>) {
@@ -135,11 +131,9 @@ constructor(
   private val softApCallback =
     SoftApCallback(tetheringEventListener, wifiManager)
 
-  private val startOrStopResultReceiver =
+  private val dummyIntResultReceiver =
     object : IIntResultListener.Stub() {
-      override fun onResult(resultCode: Int) {
-        tetheringEventListener.onEnabledStateChanged()
-      }
+      override fun onResult(resultCode: Int) {}
     }
 
   private val updateConfigOnExternalChange =
@@ -265,19 +259,18 @@ constructor(
     val request =
       TetheringManager.TetheringRequest.Builder(TETHERING_WIFI).build()
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-
       tetheringConnector.startTethering(
         request.parcel,
-        applicationContext.packageName,
-        applicationContext.attributionTag,
-        startOrStopResultReceiver,
+        ADB_PACKAGE_NAME,
+        null,
+        dummyIntResultReceiver,
       )
     } else {
       @Suppress("DEPRECATION")
       tetheringConnector.startTethering(
         request.parcel,
-        applicationContext.packageName,
-        startOrStopResultReceiver,
+        ADB_PACKAGE_NAME,
+        dummyIntResultReceiver,
       )
     }
     return true
@@ -291,16 +284,16 @@ constructor(
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
       tetheringConnector.stopTethering(
         TETHERING_WIFI,
-        applicationContext.packageName,
-        applicationContext.attributionTag,
-        startOrStopResultReceiver,
+        ADB_PACKAGE_NAME,
+        null,
+        dummyIntResultReceiver,
       )
     } else {
       @Suppress("DEPRECATION")
       tetheringConnector.stopTethering(
         TETHERING_WIFI,
-        applicationContext.packageName,
-        startOrStopResultReceiver,
+        ADB_PACKAGE_NAME,
+        dummyIntResultReceiver,
       )
     }
     return true
